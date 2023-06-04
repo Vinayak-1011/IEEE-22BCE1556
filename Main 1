@@ -1,0 +1,52 @@
+import tensorflow as tf
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+
+data = pd.read_csv('/kaggle/input/chinese-mnist/chinese_mnist.csv')
+
+
+features = data.drop('character', axis=1)
+labels = data['character']
+
+
+LabEnc = LabelEncoder()
+labels = LabEnc.fit_transform(labels)
+
+
+xtr, xte, ytr, yte = train_test_split(features, labels, test_size=0.2, random_state=42)
+
+
+xtr = xtr.astype(float) / 255.0
+xte = xte.astype(float) / 255.0
+
+
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(128, activation='relu', input_shape=(4,)),
+    tf.keras.layers.Dense(len(LabEnc.classes_), activation='softmax')
+])
+
+
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+
+epochs = 30
+batch_size = 32
+model.fit(xtr, ytr, epochs=epochs, batch_size=batch_size)
+
+
+loss, accuracy = model.evaluate(xte, yte)
+print('Test Loss:', loss)
+print('Test Accuracy:', accuracy)
+
+
+predictions = model.predict(xte)
+
+plabel = LabEnc.inverse_transform(tf.argmax(predictions, axis=1))
+
+for i in range(20):
+    print('Predicted Label:', plabel[i])
+    print('True Label:', LabEnc.inverse_transform([yte[i]]))
+    print()
+sdata = pd.DataFrame({'ID': range(len(plabel)), 'Label': plabel})
+sdata.to_csv('submission.csv', index=False)
